@@ -1,0 +1,7 @@
+{
+  "title": "R1 Sketch",
+  "url": "https://r1-sketch.vercel.app/",
+  "description": "Rabbit R1 etcher that you can sketch on",
+  "iconUrl": "https://raw.githubusercontent.com/chaosmethod/R1-Sketch/main/icon.png",
+  "themeColor": "#FF0000"
+}
