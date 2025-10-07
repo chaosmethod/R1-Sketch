@@ -54,28 +54,36 @@
             box-sizing: border-box;
         }
         
-        .header .arrow-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
+        .d-pad {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            width: 50px;
+            height: 50px;
         }
 
-        .header svg {
+        .d-pad svg {
             width: 12px;
             height: 12px;
             fill: none;
-            stroke: var(--accent-color);
+            stroke: var(--inactive-arrow-color);
             stroke-width: 3px;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: stroke 0.2s ease;
+            place-self: center;
         }
+        
+        #arrowUp { grid-area: 1 / 2 / 2 / 3; }
+        #arrowLeft { grid-area: 2 / 1 / 3 / 2; }
+        #arrowRight { grid-area: 2 / 3 / 3 / 4; }
+        #arrowDown { grid-area: 3 / 2 / 4 / 3; }
+
 
         .canvas-container {
             position: relative;
             width: 220px;
-            height: 225px;
+            height: 200px;
             background-color: var(--canvas-background);
             border-radius: 5px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
@@ -99,31 +107,32 @@
         .footer {
             width: 100%;
             display: flex;
-            justify-content: space-between;
+            justify-content: center; /* Centered the indicators */
             align-items: center;
             font-size: 14px;
             font-weight: bold;
             box-sizing: border-box;
         }
+        
+        .mode-indicators-container {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap; 
+        }
 
         .mode-indicator {
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 5px;
             background-color: #333;
             color: #ccc;
+            font-size: 11px;
         }
 
         .mode-indicator.active {
             background-color: var(--accent-color);
             color: #000;
         }
-
-        .instructions {
-             font-size: 12px;
-             text-align: center;
-             color: #ccc;
-        }
-
+        
         .clear-button {
             background-color: transparent;
             border: 2px solid var(--accent-color);
@@ -131,47 +140,44 @@
             font-family: 'Courier New', Courier, monospace;
             font-weight: bold;
             border-radius: 5px;
-            padding: 2px 8px;
+            padding: 4px 10px; /* Adjusted padding */
             font-size: 14px;
             cursor: pointer;
+            height: fit-content;
         }
         .clear-button:active {
             background-color: var(--accent-color);
             color: #000;
         }
 
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
 
     <div class="game-container">
         <div class="header">
-             <div class="arrow-group">
-                <svg id="upArrow" viewBox="0 0 24 24"><path d="M12 19V5m-7 7l7-7 7 7"/></svg>
-                <svg id="leftArrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7l-7 7 7 7"/></svg>
+             <div class="d-pad">
+                <svg id="arrowUp" viewBox="0 0 24 24"><path d="M12 19V5m-7 7l7-7 7 7"/></svg>
+                <svg id="arrowLeft" viewBox="0 0 24 24"><path d="M5 12h14m-7-7l-7 7 7 7"/></svg>
+                <svg id="arrowRight" viewBox="0 0 24 24"><path d="M19 12H5m7 7l7-7-7-7"/></svg>
+                <svg id="arrowDown" viewBox="0 0 24 24"><path d="M12 5v14m7-7l-7 7-7-7"/></svg>
             </div>
             <span id="headerTitle"><b>R1 Sketch</b></span>
-             <div class="arrow-group">
-                <svg id="rightArrow" viewBox="0 0 24 24"><path d="M19 12H5m7 7l7-7-7-7"/></svg>
-                <svg id="downArrow" viewBox="0 0 24 24"><path d="M12 5v14m7-7l-7 7-7-7"/></svg>
-            </div>
+            <button id="clearButton" class="clear-button">CLEAR</button>
         </div>
         
         <div class="canvas-container">
-            <canvas id="drawingCanvas" width="220" height="225"></canvas>
+            <canvas id="drawingCanvas" width="220" height="200"></canvas>
             <div id="cursor"></div>
         </div>
 
         <div class="footer">
-            <div>
+            <div class="mode-indicators-container">
                 <div id="vertIndicator" class="mode-indicator active">VERT</div>
-                <div id="horizIndicator" class="mode-indicator hidden">HORIZ</div>
+                <div id="horizIndicator" class="mode-indicator">HORIZ</div>
+                <div id="diag1Indicator" class="mode-indicator">DIAG \</div>
+                <div id="diag2Indicator" class="mode-indicator">DIAG /</div>
             </div>
-            <div class="instructions">1x PTT to switch mode</div>
-            <button id="clearButton" class="clear-button">CLEAR</button>
         </div>
     </div>
 
@@ -206,14 +212,22 @@
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
         const cursorElement = document.getElementById('cursor');
-        const vertIndicator = document.getElementById('vertIndicator');
-        const horizIndicator = document.getElementById('horizIndicator');
         const headerTitle = document.getElementById('headerTitle');
-        const upArrow = document.getElementById('upArrow');
-        const downArrow = document.getElementById('downArrow');
-        const leftArrow = document.getElementById('leftArrow');
-        const rightArrow = document.getElementById('rightArrow');
         const clearButton = document.getElementById('clearButton');
+
+        const indicators = {
+            VERT: document.getElementById('vertIndicator'),
+            HORIZ: document.getElementById('horizIndicator'),
+            DIAG_UL_DR: document.getElementById('diag1Indicator'),
+            DIAG_UR_DL: document.getElementById('diag2Indicator'),
+        };
+
+        const arrows = {
+            up: document.getElementById('arrowUp'),
+            down: document.getElementById('arrowDown'),
+            left: document.getElementById('arrowLeft'),
+            right: document.getElementById('arrowRight'),
+        };
         
         const rootStyles = getComputedStyle(document.documentElement);
         const accentColor = rootStyles.getPropertyValue('--accent-color').trim();
@@ -221,8 +235,10 @@
 
         let pos = { x: canvas.width / 2, y: canvas.height / 2 };
         let lastPos = { x: pos.x, y: pos.y };
-        let isHorizontalMode = false;
         const step = 2;
+
+        const drawModes = ['VERT', 'HORIZ', 'DIAG_UL_DR', 'DIAG_UR_DL'];
+        let currentModeIndex = 0;
 
         function updateCursor() {
             cursorElement.style.left = `${pos.x}px`;
@@ -241,20 +257,39 @@
         }
 
         function updateIndicators() {
-            const isHoriz = isHorizontalMode;
-            vertIndicator.classList.toggle('hidden', isHoriz);
-            horizIndicator.classList.toggle('hidden', !isHoriz);
-            vertIndicator.classList.toggle('active', !isHoriz);
-            horizIndicator.classList.toggle('active', isHoriz);
+            const currentMode = drawModes[currentModeIndex];
+            
+            Object.values(indicators).forEach(ind => ind.classList.remove('active'));
+            if(indicators[currentMode]) indicators[currentMode].classList.add('active');
 
-            upArrow.style.stroke = isHoriz ? inactiveColor : accentColor;
-            downArrow.style.stroke = isHoriz ? inactiveColor : accentColor;
-            leftArrow.style.stroke = isHoriz ? accentColor : inactiveColor;
-            rightArrow.style.stroke = isHoriz ? accentColor : inactiveColor;
+            Object.values(arrows).forEach(arrow => arrow.style.stroke = inactiveColor);
+
+            switch(currentMode) {
+                case 'VERT':
+                    arrows.up.style.stroke = accentColor;
+                    arrows.down.style.stroke = accentColor;
+                    break;
+                case 'HORIZ':
+                    arrows.left.style.stroke = accentColor;
+                    arrows.right.style.stroke = accentColor;
+                    break;
+                case 'DIAG_UL_DR': // Up-Left / Down-Right
+                    arrows.up.style.stroke = accentColor;
+                    arrows.left.style.stroke = accentColor;
+                    arrows.down.style.stroke = accentColor;
+                    arrows.right.style.stroke = accentColor;
+                    break;
+                case 'DIAG_UR_DL': // Up-Right / Down-Left
+                    arrows.up.style.stroke = accentColor;
+                    arrows.right.style.stroke = accentColor;
+                    arrows.down.style.stroke = accentColor;
+                    arrows.left.style.stroke = accentColor;
+                    break;
+            }
         }
 
-        function toggleDrawMode() {
-            isHorizontalMode = !isHorizontalMode;
+        function cycleDrawMode() {
+            currentModeIndex = (currentModeIndex + 1) % drawModes.length;
             updateIndicators();
         }
 
@@ -271,10 +306,12 @@
         function handleScrollUp() {
             lastPos.x = pos.x;
             lastPos.y = pos.y;
-            if (isHorizontalMode) {
-                pos.x -= step; // UP = LEFT
-            } else {
-                pos.y -= step; // UP = UP
+            const currentMode = drawModes[currentModeIndex];
+            switch(currentMode) {
+                case 'VERT':        pos.y -= step; break;
+                case 'HORIZ':       pos.x -= step; break; // Up -> Left
+                case 'DIAG_UL_DR':  pos.y -= step; pos.x -= step; break; // Up -> Up-Left
+                case 'DIAG_UR_DL':  pos.y -= step; pos.x += step; break; // Up -> Up-Right
             }
             draw();
         }
@@ -282,10 +319,12 @@
         function handleScrollDown() {
             lastPos.x = pos.x;
             lastPos.y = pos.y;
-            if (isHorizontalMode) {
-                pos.x += step; // DOWN = RIGHT
-            } else {
-                pos.y += step; // DOWN = DOWN
+            const currentMode = drawModes[currentModeIndex];
+             switch(currentMode) {
+                case 'VERT':        pos.y += step; break;
+                case 'HORIZ':       pos.x += step; break; // Down -> Right
+                case 'DIAG_UL_DR':  pos.y += step; pos.x += step; break; // Down -> Down-Right
+                case 'DIAG_UR_DL':  pos.y += step; pos.x -= step; break; // Down -> Down-Left
             }
             draw();
         }
@@ -298,8 +337,8 @@
             updateIndicators();
             window.addEventListener('scrollUp', handleScrollUp);
             window.addEventListener('scrollDown', handleScrollDown);
-            window.addEventListener('sideClick', toggleDrawMode); // PTT only toggles mode now
-            clearButton.addEventListener('click', clearCanvas); // New button handles clearing
+            window.addEventListener('sideClick', cycleDrawMode);
+            clearButton.addEventListener('click', clearCanvas);
         }
 
         initialize();
@@ -307,3 +346,4 @@
     </script>
 </body>
 </html>
+
