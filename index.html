@@ -125,6 +125,22 @@
              color: #ccc;
         }
 
+        .clear-button {
+            background-color: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            border-radius: 5px;
+            padding: 2px 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .clear-button:active {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
         .hidden {
             display: none;
         }
@@ -155,7 +171,8 @@
                 <div id="vertIndicator" class="mode-indicator active">VERT</div>
                 <div id="horizIndicator" class="mode-indicator hidden">HORIZ</div>
             </div>
-            <div class="instructions">4x PTT to clear<br>1x PTT to switch mode</div>
+            <div class="instructions">1x PTT to switch mode</div>
+            <button id="clearButton" class="clear-button">CLEAR</button>
         </div>
     </div>
 
@@ -165,17 +182,12 @@
             if (window.creationSensors) return;
             console.log("Mock R1 SDK loaded for browser testing.");
             
-            // Mock accelerometer is no longer needed
             window.creationSensors = {
-                accelerometer: {
-                    start: () => {},
-                    stop: () => {}
-                }
+                accelerometer: { start: () => {}, stop: () => {} }
             };
             
             document.addEventListener('mousedown', (e) => {
                  if(e.button === 0) { window.dispatchEvent(new Event('sideClick')); }
-                 // Middle mouse click is no longer used for clearing
             });
 
             document.addEventListener('keydown', (e) => {
@@ -202,6 +214,7 @@
         const downArrow = document.getElementById('downArrow');
         const leftArrow = document.getElementById('leftArrow');
         const rightArrow = document.getElementById('rightArrow');
+        const clearButton = document.getElementById('clearButton');
         
         const rootStyles = getComputedStyle(document.documentElement);
         const accentColor = rootStyles.getPropertyValue('--accent-color').trim();
@@ -211,9 +224,6 @@
         let lastPos = { x: pos.x, y: pos.y };
         let isHorizontalMode = false;
         const step = 2;
-
-        let pttClickCount = 0;
-        let pttClearTimer = null;
 
         function updateCursor() {
             cursorElement.style.left = `${pos.x}px`;
@@ -229,38 +239,6 @@
             setTimeout(() => { 
                 headerTitle.innerHTML = '<b>R1 Sketch</b>'; 
             }, 800);
-        }
-
-        function handlePttClick() {
-            // This function handles both toggling mode and the clear combo.
-            
-            // 1. Increment the click counter and reset the timeout.
-            pttClickCount++;
-            clearTimeout(pttClearTimer);
-
-            // 2. If this is the 4th click, clear the canvas.
-            if (pttClickCount >= 4) {
-                clearCanvas();
-                pttClickCount = 0; // Combo complete, reset count.
-                return; // Stop processing to prevent mode toggle on 4th press
-            }
-
-            // 3. Always toggle the draw mode on every press that ISN'T the final clear press.
-            toggleDrawMode();
-
-            // 4. Update the UI to show combo progress, but only after the second press.
-            if (pttClickCount >= 2) {
-                headerTitle.innerHTML = `<b>CLEAR? ${pttClickCount}/4</b>`;
-            }
-
-            // 5. Set a timer. If it finishes, the combo has failed.
-            pttClearTimer = setTimeout(() => {
-                pttClickCount = 0;
-                // Only reset the header text if it was showing the clear prompt.
-                if (headerTitle.textContent.startsWith('CLEAR?')) {
-                    headerTitle.innerHTML = '<b>R1 Sketch</b>';
-                }
-            }, 1000); // 1-second window to complete the combo.
         }
 
         function updateIndicators() {
@@ -321,8 +299,8 @@
             updateIndicators();
             window.addEventListener('scrollUp', handleScrollUp);
             window.addEventListener('scrollDown', handleScrollDown);
-            window.addEventListener('sideClick', handlePttClick);
-            // Accelerometer is no longer used for clearing
+            window.addEventListener('sideClick', toggleDrawMode); // PTT only toggles mode now
+            clearButton.addEventListener('click', clearCanvas); // New button handles clearing
         }
 
         initialize();
@@ -330,3 +308,4 @@
     </script>
 </body>
 </html>
+
