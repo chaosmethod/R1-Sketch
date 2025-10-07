@@ -155,7 +155,7 @@
                 <div id="vertIndicator" class="mode-indicator active">VERT</div>
                 <div id="horizIndicator" class="mode-indicator hidden">HORIZ</div>
             </div>
-            <div class="instructions">5x SHAKES to clear<br>PTT to switch mode</div>
+            <div class="instructions">4x PTT to clear<br>1x PTT to switch mode</div>
         </div>
     </div>
 
@@ -165,27 +165,17 @@
             if (window.creationSensors) return;
             console.log("Mock R1 SDK loaded for browser testing.");
             
-            const mockSDK = {
+            // Mock accelerometer is no longer needed
+            window.creationSensors = {
                 accelerometer: {
-                    callback: null,
-                    start: function(callback) { this.callback = callback; },
-                    stop: function() { this.callback = null; },
-                    _simulateShake: function() {
-                        if (this.callback) {
-                            this.callback({ x: 2, y: 2, z: 2 });
-                        }
-                    }
+                    start: () => {},
+                    stop: () => {}
                 }
             };
-            window.creationSensors = mockSDK;
             
             document.addEventListener('mousedown', (e) => {
                  if(e.button === 0) { window.dispatchEvent(new Event('sideClick')); }
-                 if(e.button === 1) { 
-                     for (let i = 0; i < 5; i++) {
-                         mockSDK.accelerometer._simulateShake();
-                     }
-                 }
+                 // Middle mouse click is no longer used for clearing
             });
 
             document.addEventListener('keydown', (e) => {
@@ -222,40 +212,14 @@
         let isHorizontalMode = false;
         const step = 2;
 
-        let shakeCount = 0;
-        let lastShakeTime = 0;
-        let shakeResetTimer = null;
+        let pttClickCount = 0;
+        let pttClearTimer = null;
 
         function updateCursor() {
             cursorElement.style.left = `${pos.x}px`;
             cursorElement.style.top = `${pos.y}px`;
         }
         
-        function handleShake(data) {
-            const totalForce = Math.abs(data.x) + Math.abs(data.y) + Math.abs(data.z);
-            const SHAKE_THRESHOLD = 5;
-            const now = Date.now();
-
-            if (totalForce > SHAKE_THRESHOLD && (now - lastShakeTime > 250)) {
-                lastShakeTime = now;
-                shakeCount++;
-                
-                headerTitle.innerHTML = `<b>SHAKE ${shakeCount}/5</b>`;
-
-                clearTimeout(shakeResetTimer);
-                shakeResetTimer = setTimeout(() => {
-                    shakeCount = 0;
-                    headerTitle.innerHTML = '<b>R1 Sketch</b>'; 
-                }, 1500); 
-
-                if (shakeCount >= 5) {
-                    clearTimeout(shakeResetTimer);
-                    shakeCount = 0;
-                    clearCanvas();
-                }
-            }
-        }
-
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             lastPos.x = pos.x;
@@ -265,6 +229,38 @@
             setTimeout(() => { 
                 headerTitle.innerHTML = '<b>R1 Sketch</b>'; 
             }, 800);
+        }
+
+        function handlePttClick() {
+            // This function handles both toggling mode and the clear combo.
+            
+            // 1. Increment the click counter and reset the timeout.
+            pttClickCount++;
+            clearTimeout(pttClearTimer);
+
+            // 2. If this is the 4th click, clear the canvas.
+            if (pttClickCount >= 4) {
+                clearCanvas();
+                pttClickCount = 0; // Combo complete, reset count.
+                return; // Stop processing to prevent mode toggle on 4th press
+            }
+
+            // 3. Always toggle the draw mode on every press that ISN'T the final clear press.
+            toggleDrawMode();
+
+            // 4. Update the UI to show combo progress, but only after the second press.
+            if (pttClickCount >= 2) {
+                headerTitle.innerHTML = `<b>CLEAR? ${pttClickCount}/4</b>`;
+            }
+
+            // 5. Set a timer. If it finishes, the combo has failed.
+            pttClearTimer = setTimeout(() => {
+                pttClickCount = 0;
+                // Only reset the header text if it was showing the clear prompt.
+                if (headerTitle.textContent.startsWith('CLEAR?')) {
+                    headerTitle.innerHTML = '<b>R1 Sketch</b>';
+                }
+            }, 1000); // 1-second window to complete the combo.
         }
 
         function updateIndicators() {
@@ -325,8 +321,8 @@
             updateIndicators();
             window.addEventListener('scrollUp', handleScrollUp);
             window.addEventListener('scrollDown', handleScrollDown);
-            window.addEventListener('sideClick', toggleDrawMode);
-            window.creationSensors.accelerometer.start(handleShake);
+            window.addEventListener('sideClick', handlePttClick);
+            // Accelerometer is no longer used for clearing
         }
 
         initialize();
@@ -334,4 +330,3 @@
     </script>
 </body>
 </html>
-
