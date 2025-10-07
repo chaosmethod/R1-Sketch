@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>R1 Sketch</title>
+    <style>
+        :root {
+            --background-color: #333333;
+            --canvas-background: #a0a0a0; /* Darkened from #c0c0c0 */
+            --line-color: #222222;
+            --cursor-color: #ffffff; /* Changed to white */
+            --text-color: #ffffff;
+            --accent-color: #ff9800;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            -webkit-user-select: none;
+            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 240px;
+            height: 282px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #4a4a4a;
+            border-radius: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            width: 100%;
+            text-align: center;
+            font-size: 18px; /* Reduced from 20px */
+            font-weight: bold;
+            color: var(--accent-color);
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .arrow-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--accent-color);
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 220px;
+            height: 200px;
+            border: 2px solid var(--background-color);
+            border-radius: 5px;
+            background-color: var(--canvas-background);
+        }
+
+        #drawingCanvas {
+            display: block;
+        }
+
+        #cursor {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: var(--cursor-color);
+            border-radius: 50%;
+            pointer-events: none;
+            /* border removed */
+            /* Switched from transform to top/left for more reliable positioning */
+        }
+        
+        .footer {
+            width: 100%;
+            display: flex;
+            justify-content: space-between; /* Adjusted for better layout */
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 0 10px; /* Added padding */
+            box-sizing: border-box;
+        }
+
+        .mode-indicator {
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: var(--background-color);
+            transition: all 0.2s;
+        }
+        
+        .mode-indicator.horizontal {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
+        /* Removed coords-indicator styles */
+
+        .instructions {
+             font-size: 12px;
+             text-align: center;
+             color: #aaa;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="header">
+            <div class="arrow-group">
+                <!-- Up Arrow -->
+                <svg viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
+                <!-- Left Arrow -->
+                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </div>
+            <span id="headerTitle">R1 Sketch</span>
+            <div class="arrow-group">
+                <!-- Down Arrow -->
+                <svg viewBox="0 0 24 24"><path d="M12 16l-6-6 1.41-1.41L12 13.17l4.59-4.58L18 10z"/></svg>
+                <!-- Right Arrow -->
+                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="drawingCanvas" width="220" height="200"></canvas>
+            <div id="cursor"></div>
+        </div>
+
+        <div class="footer">
+            <div id="modeIndicator" class="mode-indicator">VERT</div>
+            <div class="instructions">5 SHAKES to clear<br>PTT to switch mode</div>
+        </div>
+    </div>
+
+    <script>
+        // --- Mock Rabbit R1 SDK for Browser Testing ---
+        if (typeof window.creationSensors === 'undefined') {
+            console.log("SDK not found. Using mock for browser testing.");
+            
+            window.creationSensors = {
+                accelerometer: {
+                    _shakeCallback: null,
+                    start: function(callback) { this._shakeCallback = callback; },
+                    stop: function() { this._shakeCallback = null; },
+                    _triggerShake: function() {
+                        if(this._shakeCallback) this._shakeCallback({x: 5, y: 5, z: 5});
+                    }
+                }
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp') window.dispatchEvent(new Event('scrollUp'));
+                if (e.key === 'ArrowDown') window.dispatchEvent(new Event('scrollDown'));
+                if (e.key === 'p' || e.key === 'P') window.dispatchEvent(new Event('sideClick'));
+                if (e.key === 's' || e.key === 'S') window.creationSensors.accelerometer._triggerShake();
+            });
+
+            document.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) window.dispatchEvent(new Event('scrollUp'));
+                else if (e.deltaY > 0) window.dispatchEvent(new Event('scrollDown'));
+            }, { passive: false });
+            
+            document.addEventListener('mousedown', (e) => {
+                if (e.button === 0) { // Left Click for PTT
+                    window.dispatchEvent(new Event('sideClick'));
+                }
+                if (e.button === 1) { // Middle Mouse Click to clear
+                    e.preventDefault();
+                    clearCanvas();
+                }
+            });
+        }
+
+
+        // --- Game Logic ---
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const cursorElement = document.getElementById('cursor');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const headerTitle = document.getElementById('headerTitle'); // Target the title span specifically
+        
+        let pos = { x: canvas.width / 2, y: canvas.height / 2 };
+        let lastPos = { x: pos.x, y: pos.y };
+        let isHorizontalMode = false;
+        const moveStep = 2;
+
+        // Shake to clear variables
+        let shakeCount = 0;
+        let shakeResetTimer = null;
+        let canShake = true;
+
+        function init() {
+            ctx.strokeStyle = 'var(--line-color)';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            updateCursor();
+
+            window.addEventListener('scrollUp', handleScrollUp);
+            window.addEventListener('scrollDown', handleScrollDown);
+            window.addEventListener('sideClick', toggleDrawMode);
+            
+            if(window.creationSensors && window.creationSensors.accelerometer) {
+                window.creationSensors.accelerometer.start(handleShake);
+            }
+        }
+        
+        function handleShake(data) {
+            if ((data.x > 3 || data.y > 3) && canShake) {
+                canShake = false; // Debounce to register shake once
+                setTimeout(() => { canShake = true; }, 300); // Cooldown for next shake
+
+                shakeCount++;
+                
+                headerTitle.textContent = `SHAKE ${shakeCount}/5`;
+
+                clearTimeout(shakeResetTimer);
+                shakeResetTimer = setTimeout(() => {
+                    shakeCount = 0;
+                    headerTitle.innerHTML = 'R1 Sketch'; // Reset header text if combo fails
+                }, 1500); // 1.5s window to complete all shakes
+
+                if (shakeCount >= 5) {
+                    clearTimeout(shakeResetTimer);
+                    shakeCount = 0;
+                    clearCanvas();
+                }
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // The cursor position (pos) is intentionally NOT reset.
+            // We just need to sync lastPos to the current pos to prevent a stray line on the next move.
+            lastPos.x = pos.x;
+            lastPos.y = pos.y;
+            updateCursor();
+            
+            headerTitle.textContent = 'CLEARED!';
+            setTimeout(() => { 
+                headerTitle.innerHTML = 'R1 Sketch'; 
+            }, 800);
+        }
+
+        function toggleDrawMode() {
+            isHorizontalMode = !isHorizontalMode;
+            updateModeIndicator();
+        }
+        
+        function updateModeIndicator() {
+            const modeText = isHorizontalMode ? 'HORIZ' : 'VERT';
+            modeIndicator.textContent = modeText;
+
+            if (isHorizontalMode) {
+                modeIndicator.classList.add('horizontal');
+            } else {
+                modeIndicator.classList.remove('horizontal');
+            }
+        }
+
+        function handleScrollUp() {
+            lastPos.x = pos.x;
+            lastPos.y = pos.y;
+            if (isHorizontalMode) {
+                pos.x -= moveStep; // Scroll Up now moves LEFT
+            } else {
+                pos.y -= moveStep;
+            }
+            updatePosition();
+        }
+
+        function handleScrollDown() {
+            lastPos.x = pos.x;
+            lastPos.y = pos.y;
+            if (isHorizontalMode) {
+                pos.x += moveStep; // Scroll Down now moves RIGHT
+            } else {
+                pos.y += moveStep;
+            }
+            updatePosition();
+        }
+
+        function updatePosition() {
+            pos.x = Math.max(0, Math.min(canvas.width, pos.x));
+            pos.y = Math.max(0, Math.min(canvas.height, pos.y));
+            
+            drawLine();
+            updateCursor();
+        }
+
+        function drawLine() {
+            ctx.beginPath();
+            ctx.moveTo(lastPos.x, lastPos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function updateCursor() {
+            // FIX: Using top/left instead of transform for more reliable positioning.
+            // The offset (-1px) centers the new 2px cursor.
+            cursorElement.style.top = `${pos.y - 1}px`;
+            cursorElement.style.left = `${pos.x - 1}px`;
+            // coordsIndicator.textContent removed
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
