@@ -12,7 +12,7 @@
             --cursor-color: #ffffff;
             --text-color: #ffffff;
             --accent-color: #ff9800;
-            --inactive-arrow-color: #888; /* Color for inactive arrows */
+            --inactive-arrow-color: #888;
         }
 
         body {
@@ -56,9 +56,9 @@
         
         .header .arrow-group {
             display: flex;
-            flex-direction: column; /* Stack arrows vertically */
+            flex-direction: column;
             align-items: center;
-            gap: 2px; /* Adjust gap for vertical stacking */
+            gap: 2px;
         }
 
         .header svg {
@@ -66,7 +66,7 @@
             height: 12px;
             fill: none;
             stroke: var(--accent-color);
-            stroke-width: 3px; /* Makes the arrows bold */
+            stroke-width: 3px;
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: stroke 0.2s ease;
@@ -75,11 +75,11 @@
         .canvas-container {
             position: relative;
             width: 220px;
-            height: 225px; /* Increased height even more */
+            height: 225px;
             background-color: var(--canvas-background);
             border-radius: 5px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
-            overflow: hidden; /* Ensures cursor doesn't go outside */
+            overflow: hidden;
         }
 
         #drawingCanvas {
@@ -92,8 +92,8 @@
             height: 2px;
             background-color: var(--cursor-color);
             border-radius: 50%;
-            transform: translate(-50%, -50%); /* Center the cursor on its coordinates */
-            pointer-events: none; /* Make sure it doesn't interfere with mouse events */
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
 
         .footer {
@@ -106,8 +106,6 @@
             padding: 0 10px;
             box-sizing: border-box;
         }
-
-        /* Removed mode-stack styles */
 
         .mode-indicator {
             padding: 2px 8px;
@@ -137,16 +135,12 @@
     <div class="game-container">
         <div class="header">
              <div class="arrow-group">
-                <!-- Up Arrow -->
                 <svg id="upArrow" viewBox="0 0 24 24"><path d="M12 19V5m-7 7l7-7 7 7"/></svg>
-                <!-- Left Arrow -->
                 <svg id="leftArrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7l-7 7 7 7"/></svg>
             </div>
             <span id="headerTitle"><b>R1 Sketch</b></span>
              <div class="arrow-group">
-                 <!-- Right Arrow (Now first in this group) -->
                 <svg id="rightArrow" viewBox="0 0 24 24"><path d="M19 12H5m7 7l7-7-7-7"/></svg>
-                 <!-- Down Arrow (Now second in this group) -->
                 <svg id="downArrow" viewBox="0 0 24 24"><path d="M12 5v14m7-7l-7 7-7-7"/></svg>
             </div>
         </div>
@@ -157,7 +151,7 @@
         </div>
 
         <div class="footer">
-            <div> <!-- Wrapper to keep it on the left -->
+            <div>
                 <div id="vertIndicator" class="mode-indicator active">VERT</div>
                 <div id="horizIndicator" class="mode-indicator hidden">HORIZ</div>
             </div>
@@ -170,25 +164,36 @@
         (function() {
             if (window.creationSensors) return;
             console.log("Mock R1 SDK loaded for browser testing.");
+            
             const mockSDK = {
                 accelerometer: {
+                    callback: null,
                     start: function(callback) { this.callback = callback; },
                     stop: function() { this.callback = null; },
                     _simulateShake: function() {
-                        if (this.callback) { this.callback({ x: 5, y: 1, z: 1 }); }
+                        if (this.callback) {
+                            this.callback({ x: 2, y: 2, z: 2 });
+                        }
                     }
                 }
             };
             window.creationSensors = mockSDK;
+            
             document.addEventListener('mousedown', (e) => {
                  if(e.button === 0) { window.dispatchEvent(new Event('sideClick')); }
-                 if(e.button === 1) { for (let i = 0; i < 5; i++) { mockSDK.accelerometer._simulateShake(); } }
+                 if(e.button === 1) { 
+                     for (let i = 0; i < 5; i++) {
+                         mockSDK.accelerometer._simulateShake();
+                     }
+                 }
             });
+
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space') { e.preventDefault(); window.dispatchEvent(new Event('sideClick')); }
                 if (e.key === 'ArrowUp') { e.preventDefault(); window.dispatchEvent(new Event('scrollUp')); }
                 else if (e.key === 'ArrowDown') { e.preventDefault(); window.dispatchEvent(new Event('scrollDown')); }
             });
+
             document.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 if (e.deltaY < 0) { window.dispatchEvent(new Event('scrollUp')); }
@@ -202,7 +207,6 @@
         const cursorElement = document.getElementById('cursor');
         const vertIndicator = document.getElementById('vertIndicator');
         const horizIndicator = document.getElementById('horizIndicator');
-        // Removed modeStack
         const headerTitle = document.getElementById('headerTitle');
         const upArrow = document.getElementById('upArrow');
         const downArrow = document.getElementById('downArrow');
@@ -228,17 +232,22 @@
         }
         
         function handleShake(data) {
-            const SHAKE_THRESHOLD = 3;
+            const totalForce = Math.abs(data.x) + Math.abs(data.y) + Math.abs(data.z);
+            const SHAKE_THRESHOLD = 5;
             const now = Date.now();
-            if (Math.abs(data.x) > SHAKE_THRESHOLD && (now - lastShakeTime > 200)) {
+
+            if (totalForce > SHAKE_THRESHOLD && (now - lastShakeTime > 250)) {
                 lastShakeTime = now;
                 shakeCount++;
+                
                 headerTitle.innerHTML = `<b>SHAKE ${shakeCount}/5</b>`;
+
                 clearTimeout(shakeResetTimer);
                 shakeResetTimer = setTimeout(() => {
                     shakeCount = 0;
-                    headerTitle.innerHTML = '<b>R1 Sketch</b>';
-                }, 1500);
+                    headerTitle.innerHTML = '<b>R1 Sketch</b>'; 
+                }, 1500); 
+
                 if (shakeCount >= 5) {
                     clearTimeout(shakeResetTimer);
                     shakeCount = 0;
@@ -260,11 +269,8 @@
 
         function updateIndicators() {
             const isHoriz = isHorizontalMode;
-            // Toggle hidden class to show only one indicator
             vertIndicator.classList.toggle('hidden', isHoriz);
             horizIndicator.classList.toggle('hidden', !isHoriz);
-
-            // Set active class for styling
             vertIndicator.classList.toggle('active', !isHoriz);
             horizIndicator.classList.toggle('active', isHoriz);
 
