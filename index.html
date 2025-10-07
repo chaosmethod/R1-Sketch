@@ -2,32 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R1 Sketch</title>
     <style>
         :root {
             --background-color: #333333;
-            --canvas-background: #a0a0a0; /* Darkened from #c0c0c0 */
+            --canvas-background: #8f8f8f;
             --line-color: #222222;
-            --cursor-color: #ffffff; /* Changed to white */
+            --cursor-color: #ffffff;
             --text-color: #ffffff;
             --accent-color: #ff9800;
+            --inactive-arrow-color: #888; /* Color for inactive arrows */
         }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+        body {
+            font-family: 'Courier New', Courier, monospace;
             background-color: var(--background-color);
             color: var(--text-color);
-            font-family: 'Courier New', Courier, monospace;
-            -webkit-user-select: none;
-            user-select: none;
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
         }
 
         .game-container {
@@ -47,36 +44,42 @@
         .header {
             width: 100%;
             text-align: center;
-            font-size: 18px; /* Reduced from 20px */
-            font-weight: bold;
+            font-size: 18px;
             color: var(--accent-color);
             letter-spacing: 2px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 15px;
+            padding: 0 5px;
             box-sizing: border-box;
         }
-
-        .arrow-group {
+        
+        .header .arrow-group {
             display: flex;
+            flex-direction: column; /* Stack arrows vertically */
             align-items: center;
-            gap: 4px;
+            gap: 2px; /* Adjust gap for vertical stacking */
         }
 
         .header svg {
-            width: 16px;
-            height: 16px;
-            fill: var(--accent-color);
+            width: 12px;
+            height: 12px;
+            fill: none;
+            stroke: var(--accent-color);
+            stroke-width: 3px; /* Makes the arrows bold */
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s ease;
         }
 
         .canvas-container {
             position: relative;
             width: 220px;
-            height: 200px;
-            border: 2px solid var(--background-color);
-            border-radius: 5px;
+            height: 225px; /* Increased height even more */
             background-color: var(--canvas-background);
+            border-radius: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+            overflow: hidden; /* Ensures cursor doesn't go outside */
         }
 
         #drawingCanvas {
@@ -89,164 +92,153 @@
             height: 2px;
             background-color: var(--cursor-color);
             border-radius: 50%;
-            pointer-events: none;
-            /* border removed */
-            /* Switched from transform to top/left for more reliable positioning */
+            transform: translate(-50%, -50%); /* Center the cursor on its coordinates */
+            pointer-events: none; /* Make sure it doesn't interfere with mouse events */
         }
-        
+
         .footer {
             width: 100%;
             display: flex;
-            justify-content: space-between; /* Adjusted for better layout */
+            justify-content: space-between;
             align-items: center;
             font-size: 14px;
             font-weight: bold;
-            padding: 0 10px; /* Added padding */
+            padding: 0 10px;
             box-sizing: border-box;
         }
 
+        /* Removed mode-stack styles */
+
         .mode-indicator {
-            padding: 5px 10px;
+            padding: 2px 8px;
             border-radius: 5px;
-            background-color: var(--background-color);
-            transition: all 0.2s;
+            background-color: #333;
+            color: #ccc;
         }
-        
-        .mode-indicator.horizontal {
+
+        .mode-indicator.active {
             background-color: var(--accent-color);
             color: #000;
         }
 
-        /* Removed coords-indicator styles */
-
         .instructions {
              font-size: 12px;
              text-align: center;
-             color: #aaa;
+             color: #ccc;
         }
 
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
     <div class="game-container">
         <div class="header">
-            <div class="arrow-group">
+             <div class="arrow-group">
                 <!-- Up Arrow -->
-                <svg viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
+                <svg id="upArrow" viewBox="0 0 24 24"><path d="M12 19V5m-7 7l7-7 7 7"/></svg>
                 <!-- Left Arrow -->
-                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                <svg id="leftArrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7l-7 7 7 7"/></svg>
             </div>
-            <span id="headerTitle">R1 Sketch</span>
-            <div class="arrow-group">
-                <!-- Down Arrow -->
-                <svg viewBox="0 0 24 24"><path d="M12 16l-6-6 1.41-1.41L12 13.17l4.59-4.58L18 10z"/></svg>
-                <!-- Right Arrow -->
-                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+            <span id="headerTitle"><b>R1 Sketch</b></span>
+             <div class="arrow-group">
+                 <!-- Right Arrow (Now first in this group) -->
+                <svg id="rightArrow" viewBox="0 0 24 24"><path d="M19 12H5m7 7l7-7-7-7"/></svg>
+                 <!-- Down Arrow (Now second in this group) -->
+                <svg id="downArrow" viewBox="0 0 24 24"><path d="M12 5v14m7-7l-7 7-7-7"/></svg>
             </div>
         </div>
         
         <div class="canvas-container">
-            <canvas id="drawingCanvas" width="220" height="200"></canvas>
+            <canvas id="drawingCanvas" width="220" height="225"></canvas>
             <div id="cursor"></div>
         </div>
 
         <div class="footer">
-            <div id="modeIndicator" class="mode-indicator">VERT</div>
-            <div class="instructions">5 SHAKES to clear<br>PTT to switch mode</div>
+            <div> <!-- Wrapper to keep it on the left -->
+                <div id="vertIndicator" class="mode-indicator active">VERT</div>
+                <div id="horizIndicator" class="mode-indicator hidden">HORIZ</div>
+            </div>
+            <div class="instructions">5x SHAKES to clear<br>PTT to switch mode</div>
         </div>
     </div>
 
     <script>
-        // --- Mock Rabbit R1 SDK for Browser Testing ---
-        if (typeof window.creationSensors === 'undefined') {
-            console.log("SDK not found. Using mock for browser testing.");
-            
-            window.creationSensors = {
+        // --- Mock Rabbit R1 SDK for browser testing ---
+        (function() {
+            if (window.creationSensors) return;
+            console.log("Mock R1 SDK loaded for browser testing.");
+            const mockSDK = {
                 accelerometer: {
-                    _shakeCallback: null,
-                    start: function(callback) { this._shakeCallback = callback; },
-                    stop: function() { this._shakeCallback = null; },
-                    _triggerShake: function() {
-                        if(this._shakeCallback) this._shakeCallback({x: 5, y: 5, z: 5});
+                    start: function(callback) { this.callback = callback; },
+                    stop: function() { this.callback = null; },
+                    _simulateShake: function() {
+                        if (this.callback) { this.callback({ x: 5, y: 1, z: 1 }); }
                     }
                 }
             };
-            
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowUp') window.dispatchEvent(new Event('scrollUp'));
-                if (e.key === 'ArrowDown') window.dispatchEvent(new Event('scrollDown'));
-                if (e.key === 'p' || e.key === 'P') window.dispatchEvent(new Event('sideClick'));
-                if (e.key === 's' || e.key === 'S') window.creationSensors.accelerometer._triggerShake();
+            window.creationSensors = mockSDK;
+            document.addEventListener('mousedown', (e) => {
+                 if(e.button === 0) { window.dispatchEvent(new Event('sideClick')); }
+                 if(e.button === 1) { for (let i = 0; i < 5; i++) { mockSDK.accelerometer._simulateShake(); } }
             });
-
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') { e.preventDefault(); window.dispatchEvent(new Event('sideClick')); }
+                if (e.key === 'ArrowUp') { e.preventDefault(); window.dispatchEvent(new Event('scrollUp')); }
+                else if (e.key === 'ArrowDown') { e.preventDefault(); window.dispatchEvent(new Event('scrollDown')); }
+            });
             document.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                if (e.deltaY < 0) window.dispatchEvent(new Event('scrollUp'));
-                else if (e.deltaY > 0) window.dispatchEvent(new Event('scrollDown'));
+                if (e.deltaY < 0) { window.dispatchEvent(new Event('scrollUp')); }
+                else { window.dispatchEvent(new Event('scrollDown')); }
             }, { passive: false });
-            
-            document.addEventListener('mousedown', (e) => {
-                if (e.button === 0) { // Left Click for PTT
-                    window.dispatchEvent(new Event('sideClick'));
-                }
-                if (e.button === 1) { // Middle Mouse Click to clear
-                    e.preventDefault();
-                    clearCanvas();
-                }
-            });
-        }
-
+        })();
 
         // --- Game Logic ---
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
         const cursorElement = document.getElementById('cursor');
-        const modeIndicator = document.getElementById('modeIndicator');
-        const headerTitle = document.getElementById('headerTitle'); // Target the title span specifically
+        const vertIndicator = document.getElementById('vertIndicator');
+        const horizIndicator = document.getElementById('horizIndicator');
+        // Removed modeStack
+        const headerTitle = document.getElementById('headerTitle');
+        const upArrow = document.getElementById('upArrow');
+        const downArrow = document.getElementById('downArrow');
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
         
+        const rootStyles = getComputedStyle(document.documentElement);
+        const accentColor = rootStyles.getPropertyValue('--accent-color').trim();
+        const inactiveColor = rootStyles.getPropertyValue('--inactive-arrow-color').trim();
+
         let pos = { x: canvas.width / 2, y: canvas.height / 2 };
         let lastPos = { x: pos.x, y: pos.y };
         let isHorizontalMode = false;
-        const moveStep = 2;
+        const step = 2;
 
-        // Shake to clear variables
         let shakeCount = 0;
+        let lastShakeTime = 0;
         let shakeResetTimer = null;
-        let canShake = true;
 
-        function init() {
-            ctx.strokeStyle = 'var(--line-color)';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            updateCursor();
-
-            window.addEventListener('scrollUp', handleScrollUp);
-            window.addEventListener('scrollDown', handleScrollDown);
-            window.addEventListener('sideClick', toggleDrawMode);
-            
-            if(window.creationSensors && window.creationSensors.accelerometer) {
-                window.creationSensors.accelerometer.start(handleShake);
-            }
+        function updateCursor() {
+            cursorElement.style.left = `${pos.x}px`;
+            cursorElement.style.top = `${pos.y}px`;
         }
         
         function handleShake(data) {
-            if ((data.x > 3 || data.y > 3) && canShake) {
-                canShake = false; // Debounce to register shake once
-                setTimeout(() => { canShake = true; }, 300); // Cooldown for next shake
-
+            const SHAKE_THRESHOLD = 3;
+            const now = Date.now();
+            if (Math.abs(data.x) > SHAKE_THRESHOLD && (now - lastShakeTime > 200)) {
+                lastShakeTime = now;
                 shakeCount++;
-                
-                headerTitle.textContent = `SHAKE ${shakeCount}/5`;
-
+                headerTitle.innerHTML = `<b>SHAKE ${shakeCount}/5</b>`;
                 clearTimeout(shakeResetTimer);
                 shakeResetTimer = setTimeout(() => {
                     shakeCount = 0;
-                    headerTitle.innerHTML = 'R1 Sketch'; // Reset header text if combo fails
-                }, 1500); // 1.5s window to complete all shakes
-
+                    headerTitle.innerHTML = '<b>R1 Sketch</b>';
+                }, 1500);
                 if (shakeCount >= 5) {
                     clearTimeout(shakeResetTimer);
                     shakeCount = 0;
@@ -257,91 +249,83 @@
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // The cursor position (pos) is intentionally NOT reset.
-            // We just need to sync lastPos to the current pos to prevent a stray line on the next move.
             lastPos.x = pos.x;
             lastPos.y = pos.y;
             updateCursor();
-            
-            headerTitle.textContent = 'CLEARED!';
+            headerTitle.innerHTML = '<b>CLEARED!</b>';
             setTimeout(() => { 
-                headerTitle.innerHTML = 'R1 Sketch'; 
+                headerTitle.innerHTML = '<b>R1 Sketch</b>'; 
             }, 800);
+        }
+
+        function updateIndicators() {
+            const isHoriz = isHorizontalMode;
+            // Toggle hidden class to show only one indicator
+            vertIndicator.classList.toggle('hidden', isHoriz);
+            horizIndicator.classList.toggle('hidden', !isHoriz);
+
+            // Set active class for styling
+            vertIndicator.classList.toggle('active', !isHoriz);
+            horizIndicator.classList.toggle('active', isHoriz);
+
+            upArrow.style.stroke = isHoriz ? inactiveColor : accentColor;
+            downArrow.style.stroke = isHoriz ? inactiveColor : accentColor;
+            leftArrow.style.stroke = isHoriz ? accentColor : inactiveColor;
+            rightArrow.style.stroke = isHoriz ? accentColor : inactiveColor;
         }
 
         function toggleDrawMode() {
             isHorizontalMode = !isHorizontalMode;
-            updateModeIndicator();
+            updateIndicators();
+        }
+
+        function draw() {
+            pos.x = Math.max(0, Math.min(canvas.width, pos.x));
+            pos.y = Math.max(0, Math.min(canvas.height, pos.y));
+            ctx.beginPath();
+            ctx.moveTo(lastPos.x, lastPos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            updateCursor();
         }
         
-        function updateModeIndicator() {
-            const modeText = isHorizontalMode ? 'HORIZ' : 'VERT';
-            modeIndicator.textContent = modeText;
-
-            if (isHorizontalMode) {
-                modeIndicator.classList.add('horizontal');
-            } else {
-                modeIndicator.classList.remove('horizontal');
-            }
-        }
-
         function handleScrollUp() {
             lastPos.x = pos.x;
             lastPos.y = pos.y;
             if (isHorizontalMode) {
-                pos.x -= moveStep; // Scroll Up now moves LEFT
+                pos.x -= step; // UP = LEFT
             } else {
-                pos.y -= moveStep;
+                pos.y -= step; // UP = UP
             }
-            updatePosition();
+            draw();
         }
 
         function handleScrollDown() {
             lastPos.x = pos.x;
             lastPos.y = pos.y;
             if (isHorizontalMode) {
-                pos.x += moveStep; // Scroll Down now moves RIGHT
+                pos.x += step; // DOWN = RIGHT
             } else {
-                pos.y += moveStep;
+                pos.y += step; // DOWN = DOWN
             }
-            updatePosition();
+            draw();
         }
 
-        function updatePosition() {
-            pos.x = Math.max(0, Math.min(canvas.width, pos.x));
-            pos.y = Math.max(0, Math.min(canvas.height, pos.y));
-            
-            drawLine();
+        function initialize() {
+            ctx.strokeStyle = rootStyles.getPropertyValue('--line-color').trim();
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
             updateCursor();
+            updateIndicators();
+            window.addEventListener('scrollUp', handleScrollUp);
+            window.addEventListener('scrollDown', handleScrollDown);
+            window.addEventListener('sideClick', toggleDrawMode);
+            window.creationSensors.accelerometer.start(handleShake);
         }
 
-        function drawLine() {
-            ctx.beginPath();
-            ctx.moveTo(lastPos.x, lastPos.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
-        function updateCursor() {
-            // FIX: Using top/left instead of transform for more reliable positioning.
-            // The offset (-1px) centers the new 2px cursor.
-            cursorElement.style.top = `${pos.y - 1}px`;
-            cursorElement.style.left = `${pos.x - 1}px`;
-            // coordsIndicator.textContent removed
-        }
-
-        init();
+        initialize();
 
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
 
